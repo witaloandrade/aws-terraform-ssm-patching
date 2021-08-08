@@ -1,0 +1,83 @@
+
+
+/*
+#################################
+# Update All Untagged Instances
+#################################
+resource "aws_resourcegroups_group" "rg1" {
+  name        = "Ec2InstNotTaggedToMaintWind"
+  description = "This Will Fing any EC2 Without the Patch Group Tag and use it to run the maintenance window to update instances not tagged."
+
+  resource_query {
+    query = <<JSON
+{
+  "ResourceTypeFilters": [
+    "AWS::EC2::Instance"
+  ],
+  "TagFilters": [
+    {
+      "Key": "Patch Group",
+      "Values": ["(not tagged)","(empty value)"]
+    }
+  ]
+}
+JSON
+  }
+}
+
+resource "aws_ssm_patch_baseline" "default1" {
+  name             = "${var.project}-${var.envname}-${var.vendor}-${var.osystem}-Default-Baseline"
+  description      = "This Patch Baseline will auto  approve ALL updates after 7D days after published in  Microsoft Update Catalog."
+  operating_system = var.op_system
+
+approval_rule {
+    approve_after_days = 7
+
+    patch_filter {
+      key    = "PRODUCT"
+      values = ["WindowsServer2019", "WindowsServer2016", "WindowsServer2012R2", "WindowsServer2012"]
+    }
+
+    patch_filter {
+      key    = "CLASSIFICATION"
+      values = ["CriticalUpdates", "SecurityUpdates","Updates","ServicePacks","UpdateRollups"]
+    }
+
+    patch_filter {
+      key    = "MSRC_SEVERITY"
+      values = ["Critical", "Important","Moderate"]
+    }
+  }
+  tags = {
+    SSM-project = var.project
+    SSM-Envname = var.envname
+    SSM-Vendor  = var.vendor
+    SSM-OSystem = var.osystem
+  }
+}
+
+resource "aws_ssm_maintenance_window" "default1" {
+  name     = "${var.project}-${var.envname}-${var.vendor}-${var.osystem}-Default"
+  #description      = "This Maintenance Window approve ALL  untagged EC2 Instances."
+  schedule = "rate(5 days)"
+  duration = 4
+  cutoff   = 1
+  tags = {
+    SSM-project    = var.project
+    SSM-Envname    = var.envname
+    SSM-Vendor     = var.vendor
+    SSM-OSystem    = var.osystem
+  }
+}
+// Can not set an Resource Group TAG
+resource "aws_ssm_maintenance_window_target" "default1" {
+  window_id     = aws_ssm_maintenance_window.default1.id
+  name          = "EC2-NOT-TAGGED"
+  resource_type = "INSTANCE"
+
+  targets {
+    key    = "tag:Patch Group"
+    values = ["${aws_ssm_patch_group.pg7days-pg1.id}"]
+  }
+}
+*/
